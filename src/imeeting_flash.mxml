@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:layout>
+		<s:BasicLayout />
+	</s:layout>
+	
+	<s:Group horizontalCenter="0" verticalCenter="0">
+		<s:layout>
+			<s:VerticalLayout paddingBottom="150"/>
+		</s:layout>
+	
+		<s:Group width="100%">
+			<s:Rect width="100%" height="100%">
+				<s:fill><s:SolidColor color="0xCCCCCC" /></s:fill>
+			</s:Rect>
+			<s:HGroup paddingBottom="10" paddingTop="10" paddingLeft="10" >
+				<s:Label>服务器地址：</s:Label>
+				<s:TextInput id="txtIpAddr" width="480">rtmp://p2p.walkwork.net/quick_server</s:TextInput>
+				<s:Button id="btnConnect" click="connect()">Connect</s:Button>
+			</s:HGroup>
+		</s:Group>
+		
+		<s:HGroup>
+			<s:Group>
+				<s:Rect width="100%" height="100%">
+					<s:fill><s:SolidColor color="0xCCCCCC" /></s:fill>
+				</s:Rect>
+				<s:VGroup>
+					<s:HGroup width="270">
+						<s:TextInput id="txtStreamId1" width="200">user</s:TextInput>
+						<s:Button id="btnPlay1" width="60" click="play(0, txtStreamId1.text)">Play</s:Button>
+					</s:HGroup>
+					<s:VideoDisplay id="remoteVideoDisplay1" x="50" y="50" width="270" height="360"/>
+				</s:VGroup>
+			</s:Group>
+			<s:Group>
+				<s:Rect width="100%" height="100%">
+					<s:fill><s:SolidColor color="0xCCCCCC" /></s:fill>
+				</s:Rect>			
+				<s:VGroup>
+					<s:HGroup>
+						<s:TextInput id="txtStreamId2" width="200">user</s:TextInput>
+						<s:Button id="btnPlay2" width="60" click="play(1, txtStreamId2.text)">Play</s:Button>
+					</s:HGroup>
+					<s:VideoDisplay id="remoteVideoDisplay2" x="50" y="50" width="270" height="360"/>
+				</s:VGroup>
+			</s:Group>
+			<s:Group>
+				<s:Rect width="100%" height="100%">
+					<s:fill><s:SolidColor color="0xCCCCCC" /></s:fill>
+				</s:Rect>
+				<s:VGroup>
+					<s:HGroup>
+						<s:TextInput id="txtStreamId3" width="200">user</s:TextInput>
+						<s:Button id="btnPlay3" width="60" click="play(2, txtStreamId3.text)">Play</s:Button>
+					</s:HGroup>
+					<s:VideoDisplay id="remoteVideoDisplay3" x="50" y="50" width="270" height="360"/>
+				</s:VGroup>
+			</s:Group>	
+			<s:Group>
+				<s:Rect width="100%" height="100%">
+					<s:fill><s:SolidColor color="0xCCCCCC" /></s:fill>
+				</s:Rect>
+				<s:VGroup>
+					<s:HGroup>
+						<s:TextInput id="txtStreamId4" width="200">user</s:TextInput>
+						<s:Button id="btnPlay4" width="60" click="play(3, txtStreamId4.text)">Play</s:Button>
+					</s:HGroup>
+					<s:VideoDisplay id="remoteVideoDisplay4" x="50" y="50" width="270" height="360"/>
+				</s:VGroup>	
+			</s:Group>
+		</s:HGroup>	
+	
+	</s:Group>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			
+			private var _conn:NetConnection = null;		
+			private var streamArray:Array;
+			
+			private function connect():void{
+				var uri:String = txtIpAddr.text;
+				_conn = new NetConnection();
+				_conn.addEventListener(NetStatusEvent.NET_STATUS, eventHandler);
+				_conn.client={streamListMessage : function(obj:Object):void{}};
+				
+				try{
+					_conn.connect(uri, "subscriber");
+				}catch (e:ArgumentError){
+					trace("Incorrect connet URL");
+				}
+			}
+			
+			private function eventHandler(event:NetStatusEvent):void {
+				trace("Net Status Event : " + event.info.code);
+//				Alert.show(event.info.code)
+				switch (event.info.code) {
+					case "NetConnection.Connect.Success":
+						Alert.show("链接成功");
+						connectSuccess();
+						break;
+					case "NetConnection.Connect.Failed":
+						Alert.show("链接失败");
+						break;
+					case "NetConnection.Connect.Closed":
+						Alert.show("链接关闭");
+						break;
+					case "NetConnection.Connect.NetworkChange":
+						Alert.show("NetworkChange");
+						break;
+					case "NetStream.Play.PublishNotify":
+						Alert.show("视频开始");
+						break;
+					case "NetStream.Play.UnpublishNotify":
+						Alert.show("视频停止");
+						break;
+					default:
+						break;		
+				}
+			}	
+			
+			private function connectSuccess():void {
+				streamArray = new Array();
+				for (var i:int=1; i<5; i++){
+					var remoteStream:NetStream = new NetStream(_conn);
+					remoteStream.addEventListener(NetStatusEvent.NET_STATUS, eventHandler);
+					remoteStream.client = {onMetaData:function(obj:Object):void{} }
+					
+					var remoteVideoDisplay:VideoDisplay = this["remoteVideoDisplay" + i];
+					var video:Video = new Video(remoteVideoDisplay.width, remoteVideoDisplay.height);
+					video.smoothing = true;
+					video.attachNetStream(remoteStream);
+					remoteVideoDisplay.addChild(video);
+					
+					streamArray.push(remoteStream);
+				}
+			}
+			
+			private function play(index:int, streamId:String):void{
+				var remoteStream:NetStream = streamArray[index];
+				remoteStream.play(streamId);
+			}
+			
+		]]>
+	</fx:Script>	
+</s:Application>
